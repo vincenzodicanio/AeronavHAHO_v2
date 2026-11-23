@@ -591,6 +591,66 @@
       border-color: #ef4444;
       color: #fca5a5;
     }
+
+    /* ===== TEAM LIVE ===== */
+    .tab-btn.team-on:not(.active) { border-color: var(--cyan); color: var(--cyan); }
+    .tab-btn.team-off:not(.active) { border-color: rgba(245, 158, 11, 0.7); color: var(--amber); }
+    @media (max-width: 420px) {
+      .tab-btn { font-size: 9.5px; padding: 6px 3px; }
+    }
+    .team-badge {
+      font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px;
+      border: 1px solid var(--border); color: var(--muted);
+    }
+    .team-badge.on { color: var(--accent); border-color: var(--accent); }
+    .team-badge.off { color: var(--amber); border-color: rgba(245, 158, 11, 0.55); }
+    .team-msg { display: none; font-size: 11px; line-height: 1.4; margin-bottom: 10px; color: var(--amber); word-break: break-word; }
+    .team-msg.show { display: block; }
+    .team-msg.ok { color: var(--accent); }
+    .team-invite {
+      display: none; margin-bottom: 10px; padding: 8px 10px; border-radius: 6px;
+      background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.5);
+      font-size: 11px; line-height: 1.45; color: var(--text);
+    }
+    .team-invite.show { display: block; }
+    .team-group-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+    .team-group-name { font-size: 15px; font-weight: 800; word-break: break-word; }
+    .team-code { font-family: ui-monospace, monospace; font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--cyan); }
+    .team-sub { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+    .team-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center;
+      padding: 9px 6px; border-bottom: 1px solid rgba(40, 54, 79, 0.7);
+    }
+    .team-row:last-child { border-bottom: none; }
+    .team-row.goto { cursor: pointer; }
+    .team-row.stale { opacity: 0.5; }
+    .team-nick { font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .team-nick span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .team-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .team-meta { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 2px; }
+    .team-right { text-align: right; font-family: ui-monospace, monospace; font-size: 13px; font-weight: 800; }
+    .team-right small { display: block; color: var(--muted); font-size: 10px; font-weight: 600; }
+    /* Marker dei compagni sulla mappa: 0x0 sul punto, ruotano come i pin DIP per restare leggibili in HDG UP */
+    .team-pin-wrap { position: relative; width: 0; height: 0; transform-origin: 0 0; pointer-events: none; }
+    .team-pin-dot {
+      position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--c); border: 2.5px solid #ffffff; box-shadow: 0 0 9px var(--c);
+    }
+    .team-pin-lbl {
+      position: absolute; left: 0; top: 11px; transform: translateX(-50%);
+      background: rgba(9, 14, 23, 0.9); color: #f8fafc; border: 1px solid var(--c);
+      font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800;
+      padding: 1px 4px; border-radius: 4px; white-space: nowrap;
+    }
+    .team-pin-wrap.stale { opacity: 0.45; }
+    /* Pulsante flottante INQUADRA TEAM (sopra AUTO ZOOM) */
+    .fab-autozoom.fab-teamfit { bottom: 66px; }
+    .fab-autozoom.fab-teamfit.on {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
   </style>
 </head>
 <body>
@@ -598,6 +658,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="viewMap">MAPPA</button>
       <button class="tab-btn" data-tab="viewTargets">DIP / ALT (5)</button>
+      <button class="tab-btn" data-tab="viewTeam" id="tabTeam">TEAM</button>
       <button class="tab-btn" data-tab="viewSettings">IMPOSTAZIONI</button>
       <a href="./index.html" class="tab-btn" style="text-decoration:none; color:var(--amber); border-color:rgba(245,158,11,0.45);">PLANNER</a>
     </div>
@@ -627,6 +688,17 @@
           <line x1="3" y1="21" x2="10" y2="14"></line>
         </svg>
         <span>AUTO ZOOM</span>
+      </button>
+
+      <!-- Pulsante Floating INQUADRA TEAM (visibile solo se sei in un gruppo) -->
+      <button id="btnTeamFit" class="fab-autozoom fab-teamfit" style="display:none;" title="Inquadra sulla mappa te e tutti i compagni">
+        <svg viewBox="0 0 24 24">
+          <circle cx="9" cy="8" r="3"></circle>
+          <circle cx="17" cy="9" r="2.5"></circle>
+          <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"></path>
+          <path d="M15 15.2c.6-.2 1.3-.3 2-.3 2.2 0 4 1.8 4 4"></path>
+        </svg>
+        <span id="btnTeamFitLbl">INQUADRA TEAM</span>
       </button>
 
       <!-- Campi Dati Garmin GPSMAP 64st + MGRS posizionati IN ALTO -->
@@ -835,8 +907,90 @@
     </div>
   </section>
 
+  <!-- SCHEDA TEAM: TEAM LIVE (nickname, gruppi, inviti, posizioni condivise ogni 5 s) -->
+  <section id="viewTeam" class="view">
+    <div class="config-scroll">
+      <div class="panel-box">
+        <div class="panel-title">
+          <span>TEAM LIVE</span>
+          <span id="teamStatus" class="team-badge">NON IN GRUPPO</span>
+        </div>
+        <div id="teamMsg" class="team-msg"></div>
+
+        <!-- Non sei in un gruppo -->
+        <div id="teamJoinBox">
+          <div id="teamInvite" class="team-invite"></div>
+          <label>Il tuo nickname (2-16 caratteri)</label>
+          <input type="text" id="teamNick" maxlength="16" autocomplete="off" placeholder="es. MARCO" />
+          <div class="grid-2" style="margin-top:10px;">
+            <div>
+              <label>Nome gruppo (opzionale)</label>
+              <input type="text" id="teamGroupName" maxlength="30" autocomplete="off" placeholder="es. DZ Sabato" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button type="button" class="btn-act" id="btnTeamCreate" style="width:100%;">CREA GRUPPO</button>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:10px;">
+            <div>
+              <label>Codice gruppo</label>
+              <input type="text" id="teamCode" maxlength="9" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX" />
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button type="button" class="btn-map-set" id="btnTeamJoin" style="width:100%;">ENTRA</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sei in un gruppo -->
+        <div id="teamGroupBox" style="display:none;">
+          <div class="team-group-head">
+            <div>
+              <div class="hud-mgrs-lbl">GRUPPO</div>
+              <div class="team-group-name" id="teamGroupTitle">--</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="hud-mgrs-lbl">CODICE</div>
+              <div class="team-code" id="teamCodeBig">----</div>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:10px;">
+            <button type="button" class="btn-act" id="btnTeamInvite">INVITA</button>
+            <button type="button" class="btn-dem" id="btnTeamLeave" style="color:var(--danger);">ESCI DAL GRUPPO</button>
+          </div>
+          <div class="team-sub">Sei <strong id="teamMyNick" style="color:var(--text);">--</strong>. La tua posizione viene inviata e aggiornata ogni 5 secondi tramite la rete dati. Tieni lo schermo acceso durante il volo.</div>
+        </div>
+      </div>
+
+      <div class="panel-box" id="teamMembersBox" style="display:none;">
+        <div class="panel-title">
+          <span>MEMBRI</span>
+          <span id="teamCount" style="color:var(--muted); font-size:10px;">0</span>
+        </div>
+        <div id="teamList"></div>
+        <button type="button" class="btn-map-set" id="btnTeamFitTab" style="width:100%; margin-top:8px;">INQUADRA TUTTO IL TEAM SULLA MAPPA</button>
+        <div class="team-sub" style="margin-top:6px;">Tocca un compagno per centrare la mappa su di lui. Distanza e rotta sono calcolate dalla tua posizione.</div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">
+          <span>SERVER TEAM</span>
+          <span id="teamServerNote" style="color:var(--amber); font-size:10px;"></span>
+        </div>
+        <label>Indirizzo del server (https://...)</label>
+        <input type="url" id="teamServer" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://aeronav.tuodominio.it" />
+        <div class="grid-2" style="margin-top:8px;">
+          <button type="button" class="btn-dem" id="btnTeamServerSave">SALVA</button>
+          <button type="button" class="btn-dem" id="btnTeamServerTest">TEST CONNESSIONE</button>
+        </div>
+        <div class="team-sub">Il server gira sul tuo NAS. Il link d'invito include l'indirizzo, così chi lo apre non deve digitarlo.</div>
+      </div>
+    </div>
+  </section>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./mgrs-core.js"></script>
+  <script src="./team-client.js"></script>
   <script>
     const MISSION_KEY = "aeronav_haho_mission_v1";
     const NAV_KEY = "aeronav_haho_nav_v2";
@@ -846,7 +1000,7 @@
       const se = document.scrollingElement || document.documentElement;
       if (se.scrollTop || se.scrollLeft) { se.scrollTop = 0; se.scrollLeft = 0; }
       if (document.body.scrollTop || document.body.scrollLeft) { document.body.scrollTop = 0; document.body.scrollLeft = 0; }
-      ["mapViewport", "viewMap", "viewTargets", "viewSettings"].forEach((id) => {
+      ["mapViewport", "viewMap", "viewTargets", "viewSettings", "viewTeam"].forEach((id) => {
         const el = document.getElementById(id);
         if (el && (el.scrollTop || el.scrollLeft)) { el.scrollTop = 0; el.scrollLeft = 0; }
       });
@@ -854,7 +1008,7 @@
     window.addEventListener("scroll", (e) => {
       const t = e.target;
       if (t === document || t === document.documentElement || t === document.body ||
-          (t && (t.id === "mapViewport" || t.id === "viewMap" || t.id === "viewTargets" || t.id === "viewSettings"))) {
+          (t && (t.id === "mapViewport" || t.id === "viewMap" || t.id === "viewTargets" || t.id === "viewSettings" || t.id === "viewTeam"))) {
         resetShellScroll();
       }
     }, true);
@@ -936,6 +1090,7 @@
           } else if (autoCenter && currentTelemetry.lat) {
             centerMapOnPosition(currentTelemetry.lat, currentTelemetry.lon);
           }
+          if (typeof teamFitTick === "function") teamFitTick(true);
         }, 60);
       } else if (tabId === "viewTargets") {
         renderTargetConfig();
@@ -943,6 +1098,8 @@
         startCompass();
         renderSettingsUI();
         updateTileCacheInfo();
+      } else if (tabId === "viewTeam") {
+        if (typeof renderTeamUI === "function") renderTeamUI();
       }
     }
 
@@ -1334,10 +1491,11 @@
         rotator.style.transform = `translate(-50%, -50%) rotate(0deg)`;
         if (arrow) arrow.style.transform = `rotate(${smoothedHeading}deg)`;
       }
-      document.querySelectorAll(".dip-pin-wrap").forEach(el => {
+      document.querySelectorAll(".dip-pin-wrap, .team-pin-wrap").forEach(el => {
         el.style.transform = `rotate(${rotDeg}deg)`;
       });
       if (navReady && autoZoom && compassMode) scheduleContainCheck();
+      if (typeof teamFitTick === "function") teamFitTick();
     }
 
     function updateCalDialUI() {
@@ -1724,15 +1882,19 @@
         zoomToActiveTrack(false);
       } else if (autoCenter) {
         centerMapOnPosition(lat, lon);
+      } else if (typeof teamFitTick === "function") {
+        teamFitTick();
       }
     }
 
+    let lastGpsFix = null; // { ts, acc } dell'ultimo fix GPS reale (usato dal Team Live)
     function startRealGps() {
       if (!("geolocation" in navigator)) return;
       navigator.geolocation.watchPosition(
         (pos) => {
           if (simTimer) return;
           const c = pos.coords;
+          lastGpsFix = { ts: pos.timestamp, acc: c.accuracy };
           updateTelemetry(c.latitude, c.longitude, c.altitude, c.speed, c.heading);
         },
         () => {
@@ -1948,6 +2110,499 @@
       document.getElementById("btnInstall").style.display = "none";
       syncTopbarHeight();
     });
+  </script>
+
+  <!-- ======================= TEAM LIVE: logica scheda e marker ======================= -->
+  <script>
+  (function () {
+    "use strict";
+    const SERVER_KEY = "aeronav_haho_team_server_v1";
+    const NICK_RE = /^[\p{L}\p{N}_ .\-]{2,16}$/u;
+    const $ = (id) => document.getElementById(id);
+
+    let roster = [];        // tutti i membri del gruppo (ultimo sync)
+    let online = null;      // null = nessun sync ancora, true/false
+    let failCount = 0;
+    let busy = false;
+    const markers = new Map(); // id membro -> { mk, wrap, lbl }
+    let teamFit = false;       // modalita' INQUADRA TEAM attiva
+    let fitList = [];          // membri con posizione recente (esclusa la tua)
+    let lastFit = 0;
+
+    // ---------- helper ----------
+    function savedServer() { try { return localStorage.getItem(SERVER_KEY) || ""; } catch (e) { return ""; } }
+    function normServer(v) {
+      const s = String(v || "").trim().replace(/\/+$/, "");
+      return /^https?:\/\/[^\s\/]+/i.test(s) ? s : null;
+    }
+    function hostOf(url) { try { return new URL(url).host; } catch (e) { return url; } }
+    function memberColor(id) { return "hsl(" + (parseInt(String(id).slice(0, 4), 16) % 360) + ",75%,55%)"; }
+    function fmtAlt(m) {
+      return navState.altUnit === "m" ? Math.round(m) + " m" : Math.round(m * AeronavCore.M_TO_FT) + " ft";
+    }
+    function fmtSpeed(ms) {
+      return navState.spdUnit === "ms" ? ms.toFixed(1) + " m/s" : Math.round(ms * AeronavCore.MS_TO_KT) + " kt";
+    }
+    function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m"; }
+    function fmtBrg(b) { return String(Math.round(b) % 360).padStart(3, "0") + "°"; }
+    function fmtAge(s) { return s < 90 ? Math.round(s) + " s" : Math.round(s / 60) + " min"; }
+
+    function showMsg(text, ok) {
+      const el = $("teamMsg");
+      el.textContent = text || "";
+      el.classList.toggle("show", !!text);
+      el.classList.toggle("ok", !!ok);
+    }
+    function errText(e) {
+      if (e && e.status) return e.message;
+      return "Server non raggiungibile: controlla l'indirizzo e la connessione dati.";
+    }
+    function setBusy(b) {
+      busy = b;
+      ["btnTeamCreate", "btnTeamJoin", "btnTeamInvite", "btnTeamLeave"].forEach((id) => { $(id).disabled = b; });
+    }
+
+    // ---------- posizione da inviare (dal GPS gia' usato dal navigatore) ----------
+    function verticalSpeedMs() {
+      if (altHistory.length < 2) return null;
+      const a = altHistory[0], b = altHistory[altHistory.length - 1];
+      const dt = (b.t - a.t) / 1000;
+      return dt >= 1 ? (b.altFt - a.altFt) * AeronavCore.FT_TO_M / dt : null;
+    }
+    function getFix() {
+      if (simTimer) return null; // mai inviare posizioni simulate al team
+      const t = currentTelemetry;
+      if (!lastGpsFix || !Number.isFinite(t.lat) || !Number.isFinite(t.lon)) return null;
+      const f = { lat: t.lat, lon: t.lon, ts: lastGpsFix.ts, acc: lastGpsFix.acc };
+      if (Number.isFinite(t.rawAltM)) {
+        f.alt = t.altFt * AeronavCore.FT_TO_M; // MSL con la tua calibrazione quota
+        const vs = verticalSpeedMs();
+        if (vs !== null) f.vs = vs;
+      }
+      if (Number.isFinite(t.speedMs)) f.gs = t.speedMs;
+      const hdg = Number.isFinite(t.gpsHeading) ? t.gpsHeading : smoothedHeading;
+      if (Number.isFinite(hdg)) f.hdg = ((hdg % 360) + 360) % 360;
+      return f;
+    }
+
+    // ---------- marker sulla mappa ----------
+    function renderMarkers(list) {
+      const rot = compassMode ? smoothedHeading : 0;
+      const seen = new Set();
+      list.forEach((m) => {
+        if (m.you) return; // la tua posizione e' gia' la freccia del navigatore
+        seen.add(m.id);
+        let e = markers.get(m.id);
+        if (!e) {
+          const wrap = document.createElement("div");
+          wrap.className = "team-pin-wrap";
+          wrap.style.setProperty("--c", memberColor(m.id));
+          wrap.style.transform = "rotate(" + rot + "deg)";
+          const dot = document.createElement("div");
+          dot.className = "team-pin-dot";
+          const lbl = document.createElement("div");
+          lbl.className = "team-pin-lbl";
+          wrap.appendChild(dot);
+          wrap.appendChild(lbl);
+          const mk = L.marker([m.lat, m.lon], {
+            icon: L.divIcon({ html: wrap, className: "", iconSize: [0, 0], iconAnchor: [0, 0] }),
+            interactive: false, keyboard: false, zIndexOffset: 700
+          }).addTo(map);
+          e = { mk, wrap, lbl };
+          markers.set(m.id, e);
+        } else {
+          e.mk.setLatLng([m.lat, m.lon]);
+        }
+        e.wrap.classList.toggle("stale", !!m.stale);
+        e.lbl.textContent = m.nick + (Number.isFinite(m.alt) ? " " + fmtAlt(m.alt) : ""); // textContent: nessun HTML dal nickname
+      });
+      markers.forEach((e, id) => {
+        if (!seen.has(id)) { map.removeLayer(e.mk); markers.delete(id); }
+      });
+    }
+
+
+    // ---------- INQUADRA TEAM: la mappa contiene te e tutti i compagni ----------
+    // Stesso calcolo nello spazio schermo dell'AUTO ZOOM (rotazione HDG UP e ingombro dei campi dati).
+    function setTeamFit(on) {
+      teamFit = !!on;
+      $("btnTeamFit").classList.toggle("on", teamFit);
+      if (teamFit) {
+        setAutoZoomState(false);   // AUTO ZOOM e GPS-centrato sono incompatibili con l'inquadratura del team
+        autoCenter = false;
+        $("btnCenter").classList.remove("on");
+      }
+    }
+
+    function fitTeam() {
+      const f = getAutoZoomFrame();
+      if (!f || !fitList.length) return false;
+      const P = getAutoZoomOrigin();
+      const Z0 = 10, ZMIN = 3, ZMAX = 16;
+      const p0 = map.project(L.latLng(P.lat, P.lon), Z0);
+      const rot = compassMode ? -smoothedHeading : 0;
+      let minX = 0, maxX = 0, minY = 0, maxY = 0; // la tua posizione e' l'origine
+      fitList.forEach((q) => {
+        const d = map.project(L.latLng(q.lat, q.lon), Z0);
+        const r = rotScreen(d.x - p0.x, d.y - p0.y, rot);
+        minX = Math.min(minX, r.x); maxX = Math.max(maxX, r.x);
+        minY = Math.min(minY, r.y); maxY = Math.max(maxY, r.y);
+      });
+      // margine extra per le etichette dei nickname
+      const wUse = Math.max(f.right - f.left - 60, 80);
+      const hUse = Math.max(f.bottom - f.top - 40, 80);
+      const k = Math.min(wUse / Math.max(maxX - minX, 1), hUse / Math.max(maxY - minY, 1));
+      let z = Z0 + Math.log2(k);
+      z = Math.max(ZMIN, Math.min(ZMAX, Math.floor(z * 4) / 4)); // per difetto: mai piu' vicino del necessario
+      const kz = Math.pow(2, z - Z0);
+      const cx = (f.left + f.right) / 2;
+      const cy = (f.top + f.bottom) / 2;
+      const need = rotScreen((cx - f.ax) - ((minX + maxX) / 2) * kz, (cy - f.ay) - ((minY + maxY) / 2) * kz, -rot);
+      const Pz = map.project(L.latLng(P.lat, P.lon), z);
+      const centerLL = map.unproject(L.point(Pz.x - need.x, Pz.y - need.y), z);
+      programmaticZoom = true;
+      map.setView(centerLL, z, { animate: false });
+      setTimeout(() => { programmaticZoom = false; }, 120);
+      return true;
+    }
+
+    // Ricalcolo periodico (nuova posizione, nuovo sync, rotazione bussola): al massimo ~1 volta ogni 700 ms
+    let fitTimer = null;
+    function teamFitTick(force) {
+      if (!teamFit) return;
+      if (autoZoom) { setTeamFit(false); return; } // qualcosa ha riattivato l'auto zoom: cede il controllo
+      const now = Date.now();
+      if (!force && now - lastFit < 700) {
+        // troppo presto: programma un ricalcolo finale, cosi' l'ultima rotazione/posizione non resta fuori inquadratura
+        clearTimeout(fitTimer);
+        fitTimer = setTimeout(() => teamFitTick(true), 700 - (now - lastFit) + 30);
+        return;
+      }
+      clearTimeout(fitTimer);
+      lastFit = now;
+      fitTeam();
+    }
+    window.teamFitTick = teamFitTick; // richiamata dal codice di navigazione
+
+    function flashFitLabel(txt) {
+      const el = $("btnTeamFitLbl");
+      const old = "INQUADRA TEAM";
+      el.textContent = txt;
+      setTimeout(() => { el.textContent = old; }, 1700);
+    }
+
+    // Tenta di attivare la modalita': serve almeno un compagno con posizione recente
+    function enableTeamFit() {
+      if (!fitList.length) return false;
+      setTeamFit(true);
+      fitTeam();
+      return true;
+    }
+
+    $("btnTeamFit").addEventListener("click", (ev) => {
+      if (ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+      if (teamFit) { setTeamFit(false); return; }
+      if (!enableTeamFit()) flashFitLabel("NESSUN COMPAGNO");
+    });
+    $("btnTeamFitTab").addEventListener("click", () => {
+      if (!fitList.length) { showMsg("Nessun compagno con una posizione recente da inquadrare."); return; }
+      showMsg("");
+      setTeamFit(true);
+      switchTab("viewMap"); // al rientro sulla mappa l'inquadratura viene calcolata
+    });
+    // L'utente riprende il controllo della mappa: zoom o trascinamento manuale, GPS, AUTO ZOOM
+    map.on("zoomstart", () => { if (!programmaticZoom) setTeamFit(false); });
+    map.on("dragstart", () => setTeamFit(false));
+    $("btnCenter").addEventListener("click", () => setTeamFit(false));
+    $("btnAutoZoom").addEventListener("click", () => setTeamFit(false));
+    ["resize", "orientationchange"].forEach((evn) => {
+      window.addEventListener(evn, () => setTimeout(() => teamFitTick(true), 300));
+    });
+
+    // ---------- scheda TEAM ----------
+    function focusMember(m) {
+      if (!Number.isFinite(m.lat)) return;
+      setTeamFit(false);
+      setAutoZoomState(false);
+      autoCenter = false;
+      $("btnCenter").classList.remove("on");
+      switchTab("viewMap");
+      setTimeout(() => { map.setView([m.lat, m.lon], Math.max(map.getZoom(), 15), { animate: false }); }, 120);
+    }
+
+    function renderList() {
+      const box = $("teamList");
+      box.textContent = "";
+      const hasMe = Number.isFinite(currentTelemetry.lat);
+      const rows = roster.map((m) => {
+        const hasPos = Number.isFinite(m.lat) && !m.hidden;
+        const dist = (hasMe && hasPos && !m.you)
+          ? AeronavCore.distanceMeters(currentTelemetry.lat, currentTelemetry.lon, m.lat, m.lon) : null;
+        return { m, hasPos, dist };
+      });
+      rows.sort((a, b) => (b.m.you ? 1 : 0) - (a.m.you ? 1 : 0) || (a.dist ?? 1e12) - (b.dist ?? 1e12));
+
+      rows.forEach(({ m, hasPos, dist }) => {
+        const row = document.createElement("div");
+        row.className = "team-row" + (m.stale && !m.you ? " stale" : "") + (hasPos && !m.you ? " goto" : "");
+
+        const left = document.createElement("div");
+        const nick = document.createElement("div");
+        nick.className = "team-nick";
+        const dot = document.createElement("span");
+        dot.className = "team-dot";
+        dot.style.background = memberColor(m.id);
+        const nm = document.createElement("span");
+        nm.className = "nm";
+        nm.textContent = m.nick + (m.you ? " (TU)" : "");
+        nick.appendChild(dot);
+        nick.appendChild(nm);
+        const meta = document.createElement("div");
+        meta.className = "team-meta";
+        const parts = [];
+        if (m.you) {
+          parts.push(simTimer ? "SIM attivo: posizione non inviata" : (getFix() ? "posizione inviata" : "in attesa GPS"));
+        } else if (!hasPos) {
+          parts.push("in attesa di posizione");
+        } else {
+          if (Number.isFinite(m.alt)) parts.push(fmtAlt(m.alt));
+          if (Number.isFinite(m.gs)) parts.push(fmtSpeed(m.gs));
+          if (m.stale) parts.push("ultimo agg. " + fmtAge(m.age));
+        }
+        meta.textContent = parts.join(" · ");
+        left.appendChild(nick);
+        left.appendChild(meta);
+        row.appendChild(left);
+
+        if (dist !== null) {
+          const right = document.createElement("div");
+          right.className = "team-right";
+          right.textContent = fmtDist(dist);
+          const small = document.createElement("small");
+          small.textContent = fmtBrg(AeronavCore.bearingDegrees(currentTelemetry.lat, currentTelemetry.lon, m.lat, m.lon));
+          right.appendChild(small);
+          row.appendChild(right);
+        }
+        if (hasPos && !m.you) row.addEventListener("click", () => focusMember(m));
+        box.appendChild(row);
+      });
+      $("teamCount").textContent = roster.length + (roster.length === 1 ? " membro" : " membri");
+    }
+
+    function updateBadges() {
+      const inG = AeronavTeam.inGroup();
+      let txt = "NON IN GRUPPO", cls = "";
+      if (inG) {
+        if (online === true) { txt = "CONNESSO"; cls = "on"; }
+        else if (online === false) { txt = "OFFLINE"; cls = "off"; }
+        else { txt = "CONNESSIONE..."; cls = "off"; }
+      }
+      const badge = $("teamStatus");
+      badge.textContent = txt;
+      badge.className = "team-badge " + cls;
+      const tab = $("tabTeam");
+      tab.classList.toggle("team-on", inG && online === true);
+      tab.classList.toggle("team-off", inG && online !== true);
+      const others = roster.filter((m) => !m.you).length;
+      tab.textContent = inG && others > 0 ? "TEAM (" + others + ")" : "TEAM";
+      $("btnTeamFit").style.display = inG ? "inline-flex" : "none";
+      if (!inG) setTeamFit(false);
+      syncTopbarHeight();
+    }
+
+    function renderTeamUI() {
+      const inG = AeronavTeam.inGroup();
+      const s = AeronavTeam.state();
+      $("teamJoinBox").style.display = inG ? "none" : "block";
+      $("teamGroupBox").style.display = inG ? "block" : "none";
+      $("teamMembersBox").style.display = inG ? "block" : "none";
+      if (inG) {
+        $("teamGroupTitle").textContent = s.groupName || "Team";
+        $("teamCodeBig").textContent = AeronavTeam.fmtCode(s.code);
+        $("teamMyNick").textContent = s.nick || "--";
+        renderList();
+      } else if (!$("teamNick").value) {
+        $("teamNick").value = AeronavTeam.savedNickname();
+      }
+      updateBadges();
+    }
+    window.renderTeamUI = renderTeamUI; // richiamata da switchTab()
+
+    // ---------- sincronizzazione ----------
+    function startSync() {
+      if (!AeronavTeam.inGroup()) return;
+      const srv = normServer(savedServer());
+      if (!srv) return;
+      AeronavTeam.configure({ server: srv });
+      AeronavTeam.start({
+        getFix: getFix,
+        onRoster: (list) => {
+          roster = list;
+          updateBadges();
+          if ($("viewTeam").classList.contains("active")) renderList();
+        },
+        onMembers: (list) => {
+          renderMarkers(list);
+          fitList = list.filter((m) => !m.you && !m.stale);
+          teamFitTick(true);
+        },
+        onStatus: (st) => {
+          if (st.online) { failCount = 0; online = true; }
+          else { failCount++; if (failCount >= 2) online = false; } // un singolo errore non fa lampeggiare lo stato
+          updateBadges();
+        },
+        onLost: () => {
+          roster = [];
+          online = null;
+          renderMarkers([]);
+          showMsg("Il gruppo non esiste piu' o sei stato rimosso (inattivita' o server azzerato). Crea un nuovo gruppo o rientra con il codice.");
+          renderTeamUI();
+        }
+      });
+    }
+
+    function readNick() {
+      const nick = $("teamNick").value.trim().replace(/\s+/g, " ");
+      if (!NICK_RE.test(nick)) {
+        showMsg("Nickname non valido: 2-16 caratteri tra lettere, numeri, spazio . _ -");
+        $("teamNick").focus();
+        return null;
+      }
+      return nick;
+    }
+    function readServer() {
+      const srv = normServer($("teamServer").value);
+      if (!srv) {
+        showMsg("Imposta prima l'indirizzo del server (deve iniziare con https://).");
+        $("teamServer").focus();
+        return null;
+      }
+      AeronavTeam.configure({ server: srv });
+      return srv;
+    }
+    function afterEnter(srv, okText) {
+      try { localStorage.setItem(SERVER_KEY, srv); } catch (e) {}
+      AeronavTeam.clearInviteFromUrl();
+      $("teamInvite").classList.remove("show");
+      $("teamCode").value = "";
+      online = null; failCount = 0; roster = [];
+      showMsg(okText, true);
+      renderTeamUI();
+      startSync();
+    }
+
+    async function doCreate() {
+      if (busy) return;
+      showMsg("");
+      const nick = readNick(); if (!nick) return;
+      const srv = readServer(); if (!srv) return;
+      setBusy(true);
+      try {
+        await AeronavTeam.createGroup(nick, $("teamGroupName").value.trim());
+        afterEnter(srv, "Gruppo creato. Premi INVITA per mandare il link ai compagni.");
+      } catch (e) { showMsg(errText(e)); }
+      finally { setBusy(false); }
+    }
+
+    async function doJoin() {
+      if (busy) return;
+      showMsg("");
+      const nick = readNick(); if (!nick) return;
+      const code = $("teamCode").value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (code.length !== 8) { showMsg("Il codice gruppo ha 8 caratteri (es. TG99-73E2)."); $("teamCode").focus(); return; }
+      const srv = readServer(); if (!srv) return;
+      setBusy(true);
+      try {
+        await AeronavTeam.joinGroup(code, nick);
+        afterEnter(srv, "Sei entrato nel gruppo.");
+      } catch (e) { showMsg(errText(e)); }
+      finally { setBusy(false); }
+    }
+
+    async function doInvite() {
+      if (busy) return;
+      showMsg("");
+      const srv = normServer(savedServer());
+      if (srv) AeronavTeam.configure({ server: srv });
+      const r = await AeronavTeam.shareInvite();
+      if (r === "copied") showMsg("Link d'invito copiato negli appunti: incollalo in WhatsApp, Telegram o SMS.", true);
+      else if (r === "failed") showMsg("Impossibile condividere. Link da inviare: " + AeronavTeam.inviteLink());
+    }
+
+    async function doLeave() {
+      if (busy || !confirm("Uscire dal gruppo? Gli altri non vedranno piu' la tua posizione.")) return;
+      setBusy(true);
+      try { await AeronavTeam.leave(); } finally { setBusy(false); }
+      roster = []; online = null; failCount = 0;
+      renderMarkers([]);
+      showMsg("Sei uscito dal gruppo.", true);
+      renderTeamUI();
+    }
+
+    function saveServer() {
+      const srv = normServer($("teamServer").value);
+      if (!srv) { showMsg("Indirizzo non valido: deve iniziare con https://"); return null; }
+      try { localStorage.setItem(SERVER_KEY, srv); } catch (e) {}
+      $("teamServer").value = srv;
+      AeronavTeam.configure({ server: srv });
+      $("teamServerNote").textContent = /^http:/i.test(srv) ? "ATTENZIONE: http non funziona da una PWA https" : "";
+      showMsg("Server salvato.", true);
+      if (AeronavTeam.inGroup()) startSync();
+      return srv;
+    }
+
+    async function testServer() {
+      const srv = normServer($("teamServer").value);
+      if (!srv) { showMsg("Indirizzo non valido: deve iniziare con https://"); return; }
+      showMsg("Test in corso...", true);
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 7000);
+      try {
+        const r = await fetch(srv + "/health", { signal: ctl.signal });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.status === "ok") showMsg("Server raggiungibile: " + hostOf(srv), true);
+        else showMsg("Il server ha risposto in modo inatteso (HTTP " + r.status + ").");
+      } catch (e) {
+        showMsg("Server non raggiungibile: controlla l'indirizzo, il reverse proxy/tunnel e la connessione.");
+      } finally { clearTimeout(t); }
+    }
+
+    $("btnTeamCreate").addEventListener("click", doCreate);
+    $("btnTeamJoin").addEventListener("click", doJoin);
+    $("btnTeamInvite").addEventListener("click", doInvite);
+    $("btnTeamLeave").addEventListener("click", doLeave);
+    $("btnTeamServerSave").addEventListener("click", saveServer);
+    $("btnTeamServerTest").addEventListener("click", testServer);
+
+    // ---------- avvio ----------
+    $("teamServer").value = savedServer();
+    const inviteCode = AeronavTeam.pendingInvite();
+    if (inviteCode && !AeronavTeam.inGroup()) {
+      // Link d'invito: precompila codice (e server, se presente) ma NON entra da solo
+      const invSrv = normServer(AeronavTeam.pendingInviteServer());
+      if (invSrv) $("teamServer").value = invSrv;
+      $("teamCode").value = AeronavTeam.fmtCode(inviteCode);
+      const banner = $("teamInvite");
+      const srvForInfo = normServer($("teamServer").value);
+      const base = "Hai ricevuto un invito. Scegli il tuo nickname e premi ENTRA.";
+      const srvNote = invSrv && invSrv !== normServer(savedServer())
+        ? " Il link usa il server " + hostOf(invSrv) + ": entra solo se ti fidi di chi te l'ha mandato." : "";
+      banner.textContent = base + srvNote;
+      banner.classList.add("show");
+      if (srvForInfo) {
+        AeronavTeam.configure({ server: srvForInfo });
+        AeronavTeam.groupInfo(inviteCode).then((info) => {
+          banner.textContent = "Invito al gruppo \"" + info.group_name + "\" (" + info.members + (info.members === 1 ? " membro" : " membri") + "). Scegli il tuo nickname e premi ENTRA." + srvNote;
+        }).catch(() => {});
+      }
+      switchTab("viewTeam");
+    } else if (inviteCode) {
+      AeronavTeam.clearInviteFromUrl();
+    }
+    if (!$("teamServer").value) $("teamServerNote").textContent = "DA IMPOSTARE";
+    renderTeamUI();
+    startSync();
+  })();
   </script>
 </body>
 </html>
