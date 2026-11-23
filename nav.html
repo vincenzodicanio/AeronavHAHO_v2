@@ -651,6 +651,43 @@
       color: var(--cyan);
       box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
     }
+    /* ===== ORIENTAMENTO SCHERMO: pulsante + layout orizzontale (campi dati a destra) ===== */
+    .tool-btn.lock-on { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: var(--amber); }
+    .orient-toast {
+      display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+      z-index: 3000; max-width: 90vw; text-align: center;
+      background: rgba(9, 14, 23, 0.96); color: var(--text); border: 1px solid var(--amber);
+      font-size: 11px; font-weight: 700; line-height: 1.4; padding: 8px 12px; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    }
+    .orient-toast.show { display: block; }
+    @media (orientation: landscape) {
+      :root { --hud-w: clamp(250px, 34vw, 340px); }
+      /* la mappa (e il suo mirino) occupa solo la parte sinistra; i campi dati stanno in una colonna a destra */
+      #mapViewport { right: var(--hud-w); }
+      #viewMap .top-telemetry-stack {
+        top: 0; right: 0; bottom: 0; left: auto;
+        width: var(--hud-w);
+        padding: 8px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: #060a11;
+        border-left: 1px solid var(--border);
+        pointer-events: auto;
+      }
+      .garmin-row-bottom .g-value { font-size: 17px; }
+      .mgrs-strip { flex-direction: column; align-items: stretch; gap: 3px; }
+      .mgrs-strip > div { text-align: left !important; }
+    }
+    /* telefono in orizzontale (poca altezza): campi dati piu' compatti */
+    @media (orientation: landscape) and (max-height: 520px) {
+      #viewMap .top-telemetry-stack { padding: 6px; gap: 5px; }
+      .g-value { font-size: 16px; }
+      .garmin-row-bottom .g-value { font-size: 15px; }
+      .g-field { padding: 3px 5px; }
+      .g-label { font-size: 8.5px; margin-bottom: 1px; }
+      .g-sub { font-size: 8.5px; margin-top: 1px; }
+    }
   </style>
 </head>
 <body>
@@ -667,6 +704,7 @@
       <button id="btnTapDip" class="tool-btn" title="Tocca un punto su mappa per impostare DIP alternato">TAP DIP</button>
       <button id="btnCompass" class="tool-btn on" title="Orientamento Bussola">HDG UP</button>
       <button id="btnCenter" class="tool-btn on" title="Centra su GPS">GPS</button>
+      <button id="btnOrient" class="tool-btn" title="Orientamento schermo: AUTO / ORIZZONTALE / VERTICALE">↻ AUTO</button>
       <button id="btnSim" class="tool-btn" title="Simulatore Volo">SIM</button>
     </div>
   </header>
@@ -701,7 +739,9 @@
         <span id="btnTeamFitLbl">INQUADRA TEAM</span>
       </button>
 
-      <!-- Campi Dati Garmin GPSMAP 64st + MGRS posizionati IN ALTO -->
+    </div>
+
+      <!-- Campi Dati Garmin GPSMAP 64st + MGRS: in alto in verticale, colonna a destra in orizzontale -->
       <div class="top-telemetry-stack">
         <!-- Riga 1: Efficienza Reale e Efficienza a Destinazione -->
         <div class="garmin-row-top">
@@ -753,7 +793,6 @@
           TOCCA UN DIP ESISTENTE O UN PUNTO SULLA MAPPA PER SELEZIONARLO
         </div>
       </div>
-    </div>
   </section>
 
   <!-- SCHEDA 2: IMPOSTAZIONE HARP, DIP PRINCIPALE E 5 DIP ALTERNATIVI IN MGRS -->
@@ -1176,7 +1215,9 @@
       if (!W || !H) return null;
       const ax = W / 2;
       const ay = H * 0.78;
-      const hudBottom = hudEl ? (hudEl.offsetTop + hudEl.offsetHeight) : 185;
+      const landscape = window.matchMedia("(orientation: landscape)").matches;
+      // in orizzontale i campi dati sono in una colonna a destra (fuori dalla mappa): niente ingombro in alto
+      const hudBottom = landscape ? 0 : (hudEl ? (hudEl.offsetTop + hudEl.offsetHeight) : 185);
       return {
         W, H, ax, ay,
         left: 36,
@@ -2603,6 +2644,119 @@
     renderTeamUI();
     startSync();
   })();
+  </script>
+
+  <!-- ======================= ORIENTAMENTO SCHERMO + SCHERMO SEMPRE ACCESO ======================= -->
+  <div id="orientToast" class="orient-toast"></div>
+  <script>
+    (function () {
+      "use strict";
+      var KEY = "aeronav_haho_orient_v1";
+      var MODES = ["auto", "landscape", "portrait"];
+      var LABEL = { auto: "\u21bb AUTO", landscape: "\u21bb ORIZ", portrait: "\u21bb VERT" };
+      var btn = document.getElementById("btnOrient");
+      var toastEl = document.getElementById("orientToast");
+      var toastTimer = null;
+      var fsByUs = false;
+      var mode = "auto";
+      try { var saved = localStorage.getItem(KEY); if (MODES.indexOf(saved) >= 0) mode = saved; } catch (e) { /* ignora */ }
+
+      function toast(txt) {
+        toastEl.textContent = txt;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 5000);
+      }
+      function paint() {
+        btn.textContent = LABEL[mode];
+        btn.classList.toggle("lock-on", mode !== "auto");
+      }
+      function relayout() {
+        // lascia che mappa, campi dati e auto zoom si ricalcolino con il nuovo orientamento
+        setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 250);
+      }
+
+      // Blocca l'orientamento. Su Android funziona nella PWA installata; in una scheda del browser
+      // serve la modalita' a schermo intero (richiesta solo se l'utente ha toccato il pulsante).
+      async function lockTo(type, interactive) {
+        var so = screen.orientation;
+        if (!so || !so.lock) return false;
+        try { await so.lock(type); return true; } catch (e1) {
+          if (!interactive || !document.documentElement.requestFullscreen) return false;
+          try {
+            if (!document.fullscreenElement) {
+              await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+              fsByUs = true;
+            }
+            await so.lock(type);
+            return true;
+          } catch (e2) {
+            if (fsByUs) { try { await document.exitFullscreen(); } catch (e3) { /* ignora */ } fsByUs = false; }
+            return false;
+          }
+        }
+      }
+      async function applyMode(interactive) {
+        if (mode === "auto") {
+          try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) { /* ignora */ }
+          if (fsByUs && document.fullscreenElement) { try { await document.exitFullscreen(); } catch (e) { /* ignora */ } }
+          fsByUs = false;
+          return true;
+        }
+        return lockTo(mode, interactive);
+      }
+
+      btn.addEventListener("click", async function () {
+        mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+        var ok = await applyMode(true);
+        if (!ok) {
+          mode = "auto";
+          toast("Questo browser non permette di bloccare l'orientamento. Installa l'app (PWA) oppure attiva la rotazione automatica del dispositivo e ruotalo a mano.");
+        } else {
+          try { localStorage.setItem(KEY, mode); } catch (e) { /* ignora */ }
+        }
+        paint();
+        relayout();
+        if (typeof syncTopbarHeight === "function") syncTopbarHeight();
+      });
+
+      // se l'utente esce dallo schermo intero (gesto di sistema) il blocco decade: torna in AUTO
+      document.addEventListener("fullscreenchange", function () {
+        if (fsByUs && !document.fullscreenElement) {
+          fsByUs = false;
+          mode = "auto";
+          paint();
+        }
+      });
+      var mq = window.matchMedia("(orientation: landscape)");
+      var onMq = function () { if (typeof syncTopbarHeight === "function") syncTopbarHeight(); relayout(); };
+      if (mq.addEventListener) mq.addEventListener("change", onMq); else if (mq.addListener) mq.addListener(onMq);
+
+      paint();
+      if (mode !== "auto") {
+        // all'avvio: riapplica l'ultima scelta se possibile (PWA installata); altrimenti resta in AUTO senza disturbare
+        applyMode(false).then(function (ok) { if (!ok) { mode = "auto"; paint(); } });
+      }
+
+      // ---- schermo sempre acceso (Screen Wake Lock) ----
+      var sentinel = null;
+      async function keepAwake() {
+        if (!("wakeLock" in navigator) || document.visibilityState !== "visible") return;
+        if (sentinel && !sentinel.released) return;
+        try {
+          sentinel = await navigator.wakeLock.request("screen");
+          sentinel.addEventListener("release", function () { sentinel = null; });
+        } catch (e) { /* risparmio energetico o permesso negato: si riprova al prossimo evento */ }
+      }
+      document.addEventListener("visibilitychange", keepAwake);
+      window.addEventListener("pageshow", keepAwake);
+      window.addEventListener("focus", keepAwake);
+      ["pointerdown", "touchstart", "keydown"].forEach(function (ev) {
+        document.addEventListener(ev, keepAwake, { passive: true });
+      });
+      setInterval(keepAwake, 30000);
+      keepAwake();
+    })();
   </script>
 </body>
 </html>
