@@ -311,8 +311,18 @@
 
       <div class="box">
         <div class="box-title">
-          <span>3. VENTI IN QUOTA (OPEN-METEO)</span>
-          <button class="btn btn-cyan" id="btnFetchWind" style="padding:2px 7px; font-size:10px;">AGGIORNA VENTI</button>
+          <span>3. VENTI IN QUOTA (NOAA GFS)</span>
+          <button class="btn btn-cyan" id="btnFetchWind" style="padding:2px 7px; font-size:10px;">AGGIORNA NOAA</button>
+        </div>
+        <div id="noaaMetaBox" style="background:rgba(9,14,23,0.75); border:1px solid var(--border); border-radius:6px; padding:6px 8px; margin-bottom:8px; font-size:11px; line-height:1.45;">
+          <div style="display:flex; justify-content:space-between; gap:6px;">
+            <span style="color:var(--muted);">Fonte meteo:</span>
+            <strong id="noaaSourceLbl" style="color:var(--cyan);">Profilo predefinito (locale)</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; gap:6px;">
+            <span style="color:var(--muted);">Validità bollettino:</span>
+            <strong id="noaaRunTime" style="color:var(--text);">--</strong>
+          </div>
         </div>
         <div class="grid-2" style="margin-bottom:8px;">
           <div>
@@ -382,6 +392,8 @@
       harpLon: 10.6305,
       openLat: 43.6812,
       openLon: 10.6305,
+      windSource: "Profilo predefinito (locale)",
+      windValidTime: "--",
       winds: [
         { altFt: 2000, dirFrom: 270, spdKt: 12 },
         { altFt: 4000, dirFrom: 275, spdKt: 15 },
@@ -427,12 +439,12 @@
     const map = L.map("map", { zoomControl: true }).setView([state.dipLat, state.dipLon], 12);
     const baseOsm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
-      attribution: "&copy; OpenStreetMap | Open-Meteo"
+      attribution: "&copy; OpenStreetMap | NOAA GFS"
     });
     const baseSat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19,
       maxNativeZoom: 18,
-      attribution: "Imagery &copy; Esri | Open-Meteo"
+      attribution: "Imagery &copy; Esri | NOAA GFS"
     });
     (savedMapType === "sat" ? baseSat : baseOsm).addTo(map);
     L.control.layers({ "Stradale (OSM)": baseOsm, "Satellite": baseSat }, null, { position: "topright" }).addTo(map);
@@ -562,6 +574,10 @@
       document.getElementById("sinkRate").value = isMetricSpd
         ? Number(((state.sinkRateFpm / 60) * AeronavCore.FT_TO_M).toFixed(1))
         : Math.round(state.sinkRateFpm);
+      const srcEl = document.getElementById("noaaSourceLbl");
+      const valEl = document.getElementById("noaaRunTime");
+      if (srcEl) srcEl.textContent = state.windSource || "Profilo predefinito (locale)";
+      if (valEl) valEl.textContent = state.windValidTime || "--";
     }
 
     let dipReq = 0;
@@ -577,7 +593,7 @@
       recalculateHarp(true);
       if (!fetchMeteo) return;
 
-      document.getElementById("dipStatus").textContent = "Lettura elevazione DEM e venti Open-Meteo...";
+      document.getElementById("dipStatus").textContent = "Lettura elevazione DEM e venti NOAA GFS...";
       const elevPromise = AeronavCore.fetchElevationFt(lat, lon).catch(() => null);
       const windPromise = fetchOpenMeteoWinds();
       const [elev] = await Promise.all([elevPromise, windPromise]);
@@ -632,6 +648,9 @@
           } else if (f === "spd") {
             state.winds[i].spdKt = isMetricSpd ? (val * AeronavCore.MS_TO_KT) : val;
           }
+          state.windSource = (state.windSource || "NOAA GFS 0.25°").replace(" (modificato)", "") + " (modificato)";
+          const srcEl = document.getElementById("noaaSourceLbl");
+          if (srcEl) srcEl.textContent = state.windSource;
           recalculateHarp();
         });
       });
@@ -640,57 +659,94 @@
     async function fetchOpenMeteoWinds() {
       const dateStr = document.getElementById("windDate").value;
       const hourIdx = parseInt(document.getElementById("windHour").value, 10) || 0;
-      const levels = [
-        { hpa: 950, altFt: 2000 },
-        { hpa: 900, altFt: 3300 },
-        { hpa: 850, altFt: 5000 },
-        { hpa: 800, altFt: 6500 },
-        { hpa: 700, altFt: 10000 },
-        { hpa: 600, altFt: 14000 },
-        { hpa: 500, altFt: 18500 },
-        { hpa: 400, altFt: 23500 },
-        { hpa: 300, altFt: 30000 }
-      ];
-      const vars = levels.flatMap(l => [`wind_speed_${l.hpa}hPa`, `wind_direction_${l.hpa}hPa`]).concat(["pressure_msl"]).join(",");
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${state.dipLat.toFixed(4)}&longitude=${state.dipLon.toFixed(4)}&hourly=${vars}&wind_speed_unit=kn&start_date=${dateStr}&end_date=${dateStr}`;
+      const srcEl = document.getElementById("noaaSourceLbl");
+      const runTimeEl = document.getElementById("noaaRunTime");
+      const hpaLevels = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250];
+      const vars = [
+        "pressure_msl",
+        "wind_speed_10m",
+        "wind_direction_10m",
+        ...hpaLevels.flatMap(p => [
+          `wind_speed_${p}hPa`,
+          `wind_direction_${p}hPa`,
+          `geopotential_height_${p}hPa`
+        ])
+      ].join(",");
+
+      // Endpoint dedicato esclusivamente al modello NOAA GFS (0.25°)
+      const url = `https://api.open-meteo.com/v1/gfs?latitude=${state.dipLat.toFixed(4)}&longitude=${state.dipLon.toFixed(4)}&hourly=${vars}&wind_speed_unit=kn&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
 
       try {
+        if (srcEl) srcEl.textContent = "NOAA GFS 0.25° (NCEP)...";
+        if (runTimeEl) runTimeEl.textContent = "scaricamento...";
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Errore API Open-Meteo");
+        if (!res.ok) throw new Error("Errore API NOAA GFS");
         const data = await res.json();
+        const surfaceElevM = typeof data.elevation === "number" ? data.elevation : (state.dipElevFt * AeronavCore.FT_TO_M);
         const newWinds = [];
-        for (const l of levels) {
-          const spdArr = data.hourly[`wind_speed_${l.hpa}hPa`];
-          const dirArr = data.hourly[`wind_direction_${l.hpa}hPa`];
-          if (spdArr && dirArr && spdArr[hourIdx] != null && dirArr[hourIdx] != null) {
+
+        // Vento al suolo (10m AGL)
+        const sfcSpd = data.hourly.wind_speed_10m?.[hourIdx];
+        const sfcDir = data.hourly.wind_direction_10m?.[hourIdx];
+        if (sfcSpd != null && sfcDir != null) {
+          newWinds.push({
+            altFt: Math.round(surfaceElevM * AeronavCore.M_TO_FT),
+            dirFrom: Math.round(sfcDir),
+            spdKt: Math.round(sfcSpd)
+          });
+        }
+
+        // Livelli barici NOAA GFS con quota geopotenziale reale MSL
+        for (const p of hpaLevels) {
+          const geoM = data.hourly[`geopotential_height_${p}hPa`]?.[hourIdx];
+          const spd = data.hourly[`wind_speed_${p}hPa`]?.[hourIdx];
+          const dir = data.hourly[`wind_direction_${p}hPa`]?.[hourIdx];
+          if (geoM != null && geoM > surfaceElevM + 30 && spd != null && dir != null) {
             newWinds.push({
-              altFt: l.altFt,
-              dirFrom: Math.round(dirArr[hourIdx]),
-              spdKt: Math.round(spdArr[hourIdx])
+              altFt: Math.round(geoM * AeronavCore.M_TO_FT),
+              dirFrom: Math.round(dir),
+              spdKt: Math.round(spd)
             });
           }
         }
-        // Pressione ridotta al livello del mare: precompila il QNH solo se non e' stato inserito a mano
+
+        newWinds.sort((a, b) => a.altFt - b.altFt);
+
+        // Pressione ridotta al livello del mare (NOAA GFS): precompila il QNH solo se non inserito a mano
         const pMsl = data.hourly.pressure_msl ? data.hourly.pressure_msl[hourIdx] : null;
         if (typeof pMsl === "number" && !state.qnhManual) {
           state.qnhHpa = Number(pMsl.toFixed(1));
           document.getElementById("qnh").value = state.qnhHpa.toFixed(1);
         }
+
         if (newWinds.length > 0) {
           state.winds = newWinds;
+          const tzAbbr = data.timezone_abbreviation || "Locale";
+          const rawTime = data.hourly.time?.[hourIdx] || `${dateStr}T${String(hourIdx).padStart(2, "0")}:00`;
+          const validStr = `${rawTime.replace("T", " ")} (${tzAbbr})`;
+          state.windSource = "NOAA GFS 0.25° (NCEP)";
+          state.windValidTime = validStr;
+          if (srcEl) srcEl.textContent = state.windSource;
+          if (runTimeEl) runTimeEl.textContent = state.windValidTime;
           renderWindTable();
-          document.getElementById("dipStatus").textContent = "Dati DEM e venti Open-Meteo aggiornati.";
+          document.getElementById("dipStatus").textContent = "Dati DEM e venti NOAA GFS aggiornati.";
         }
       } catch (err) {
-        document.getElementById("dipStatus").textContent = "Uso profilo venti locale (offline/errore rete).";
+        if (srcEl) srcEl.textContent = `${state.windSource || "Locale"} [Offline]`;
+        if (runTimeEl) runTimeEl.textContent = state.windValidTime || "--";
+        document.getElementById("dipStatus").textContent = "Uso profilo venti salvato (offline/errore rete NOAA).";
       }
     }
 
-    document.getElementById("btnFetchWind").addEventListener("click", async () => {
-      document.getElementById("dipStatus").textContent = "Scaricamento venti Open-Meteo...";
+    async function refreshNoaaAndRecalc() {
+      document.getElementById("dipStatus").textContent = "Scaricamento venti NOAA GFS...";
       await fetchOpenMeteoWinds();
       recalculateHarp();
-    });
+    }
+
+    document.getElementById("btnFetchWind").addEventListener("click", refreshNoaaAndRecalc);
+    document.getElementById("windDate").addEventListener("change", refreshNoaaAndRecalc);
+    document.getElementById("windHour").addEventListener("change", refreshNoaaAndRecalc);
 
     let windsSorted = [];
     function getWindAtAltitude(altFt) {
@@ -701,9 +757,16 @@
         const w1 = sorted[i], w2 = sorted[i + 1];
         if (altFt >= w1.altFt && altFt <= w2.altFt) {
           const t = (altFt - w1.altFt) / (w2.altFt - w1.altFt);
-          let diff = ((w2.dirFrom - w1.dirFrom + 540) % 360) - 180;
-          const dir = (w1.dirFrom + diff * t + 360) % 360;
-          const spd = w1.spdKt + (w2.spdKt - w1.spdKt) * t;
+          const rad1 = (w1.dirFrom * Math.PI) / 180;
+          const rad2 = (w2.dirFrom * Math.PI) / 180;
+          const u1 = -w1.spdKt * Math.sin(rad1);
+          const v1 = -w1.spdKt * Math.cos(rad1);
+          const u2 = -w2.spdKt * Math.sin(rad2);
+          const v2 = -w2.spdKt * Math.cos(rad2);
+          const u = u1 + (u2 - u1) * t;
+          const v = v1 + (v2 - v1) * t;
+          const spd = Math.hypot(u, v);
+          const dir = ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360;
           return { dirFrom: dir, spdKt: spd };
         }
       }
