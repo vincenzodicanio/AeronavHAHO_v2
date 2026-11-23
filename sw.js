@@ -1,5 +1,5 @@
 /* AeronavHAHO Service Worker - Supporto Offline & NOAA GFS Network-First */
-const CACHE_NAME = 'aeronavhaho-noaa-v1';
+const CACHE_NAME = 'aeronavhaho-noaa-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -49,7 +49,8 @@ self.addEventListener('fetch', (event) => {
 
   // Strategia Network-First anche per i file della PWA per aggiornamenti automatici
   event.respondWith(
-    fetch(event.request)
+    // no-cache: salta la cache HTTP di GitHub Pages (~10 min) e controlla sempre il server, cosi' gli aggiornamenti arrivano subito
+    fetch(event.request, { cache: 'no-cache' })
       .then((response) => {
         if (response.status === 200) {
           const clone = response.clone();
